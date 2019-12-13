@@ -218,7 +218,49 @@ pocsagconfig=[
 
 pocsagpacket="68656c6c6f20776f726c640000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
 
+# Jukebox config
+jukeboxConfig = [
+    IOCFG0  , 0x06,              # GDO0 Output Pin Configuration
+    FIFOTHR , 0x47,              # RX FIFO and TX FIFO Thresholds
+    #PKTCTRL0, 0x05,              # Packet Automation Control
+    PKTCTRL0, 0x00,              # Fixed Length no CRC
+    FSCTRL1 , 0x06,              # Frequency Synthesizer Control
 
+    FREQ2   , 0x10,              # Frequency Control Word, High Byte
+    FREQ1   , 0xB0,              # Frequency Control Word, Middle Byte
+    FREQ0   , 0x71,              # Frequency Control Word, Low Byte
+
+    MDMCFG4 , 0xF6,              # Modem Configuration
+    MDMCFG3 , 0x1D,              # Modem Configuration
+    MDMCFG2 , 0x33,              # Modem Configuration
+
+    DEVIATN , 0x15,              # Modem Deviation Setting
+    MCSM0   , 0x18,              # Main Radio Control State Machine Configuration
+    FOCCFG  , 0x16,              # Frequency Offset Compensation Configuration
+    WORCTRL , 0xFB,              # Wake On Radio Control
+    FREND0  , 0x11,              # Front End TX Configuration
+
+    FSCAL3  , 0xE9,              # Frequency Synthesizer Calibration
+    FSCAL2  , 0x2A,              # Frequency Synthesizer Calibration
+    FSCAL1  , 0x00,              # Frequency Synthesizer Calibration
+    FSCAL0  , 0x1F,              # Frequency Synthesizer Calibration
+
+    # Matches on the packet, after the pramble.
+    #SYNC1,   0xFF,  
+    #SYNC0,   0xFF,
+    #ADDR,    0x00,  
+    
+    # Adding some things trying stuff out
+    #PKTCTRL1, 0x00,  # No address check, no status.
+    PKTLEN,  17,                 #  PKTLEN    Packet length.
+
+
+    
+    TEST2   , 0x81,              # Various Test Settings
+    TEST1   , 0x35,              # Various Test Settings
+    TEST0   , 0x09,              # Various Test Settings
+	0, 0
+]
 
 def packconfig(config):
     """Packs a radio configuration into a string."""
@@ -416,7 +458,9 @@ if __name__=='__main__':
     parser.add_argument('-P','--pocsag',
                         action='count',
                         help='Listens for POCSAG pages on the DAPNET frequency. (BROKEN)');
-    
+    parser.add_argument('-J','--jukebox',
+                        action='count',
+                        help='Listens for NEC messages from TouchTunes remote');
     
     args = parser.parse_args()
 
@@ -516,7 +560,18 @@ if __name__=='__main__':
             if len(p)>1:
                 print p;
             time.sleep(1);
-            
+
+    if args.jukebox!=None:
+        print "Jukebox RX";
+        time.sleep(1);
+        goodwatch.radioonoff(1);
+        goodwatch.radioconfig(jukeboxConfig);
+        goodwatch.radiofreq(433.920);
+        while True:
+            packet = goodwatch.radiorx();
+            if len(packet) > 1:
+                print packet.encode('hex');
+            time.sleep(0.1);        
         
     #Exit turbomode when we're done.
     #goodwatch.turbomode(0);

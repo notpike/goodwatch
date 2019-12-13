@@ -27,7 +27,7 @@
  * Frequency: 433.92MHz
  * Modulation: ASK/OOK
  * Protocol: NEC
- * Symbol Rate: 1766
+ * Symbol Rate: 1766/s
  * Symbol Period: 566us
  * 
  * ==NEC Format==
@@ -38,11 +38,9 @@
  * Sync (Literal Symbols):    \xFF\xFF\x00
  * Preamble (Decoded NEC):    0x5D
  * PIN 000-255 (Decoded NEC): 0x00-0xFF (LSB)
- * Command (Decoded NEC):
- * 
- * Note: Commands are doubled with the 2nd half being reversed.
- *       For example, Pause 0x32 will translate to 0x3223 before
- *       being encoded to the literal symbols. \xA8\x8A\x8A\xA2\xA8\x80
+ * Command: Commands are doubled with the 2nd half being reversed.
+ *          For example, Pause 0x32 will translate to 0x3223 before
+ *          being encoded to the literal symbols. \xA8\x8A\x8A\xA2\xA8\x80
  * 
  * Command:             Pin 000 - On/Off
  * Literal Symbols HEX: ffff00 a2888a2 aaaa 8888aa2aa2220
@@ -82,7 +80,7 @@ const uint32_t jukebox_commands[32] = {
 	0xCA, // P3 Skip 
 	0x20, // F1 Restart
 	0xF2, // Up 
-	0xA0, // F2 Key
+	0xA0, // F2 Key2
 	0x84, // Left
 	0x44, // OK
 	0xC4, // Right
@@ -272,6 +270,96 @@ uint8_t* build_jukebox_packet(int cmd, int pin) {
  * confusion. Last known PIN will be displayed unless it changes or the user
  * switches back to TX mode.   
  */
+
+// void msgConcat(const uint8_t *in, uint8_t *inPos, uint64_t *encode, uint8_t *bitLength) {
+
+// 	while(*bitLength <= 24 && *inPos < LEN) {
+// 		*encode <<= 8;							// Shift left 8
+// 		*encode |= in[*inPos];					// Add RX data and increment by 1
+// 		*inPos += 1;
+// 		*bitLength += 8;						// Update bitLength
+// 	}
+// }
+
+// // NEC Decoder
+// // *out[PIN, Command Value]
+// int decode(const uint8_t *in, uint8_t *out) {
+	
+// 	uint64_t encode = 0;
+// 	uint64_t decode = 0;
+// 	uint8_t bitLength = 0;
+// 	uint8_t inPos = 3;
+// 	uint8_t pin = 0;
+// 	uint8_t command = 0x00;
+	
+// 	// If the packet is valid
+// 	if(in[0] == 0xff && in[1] == 0xff && in[2] == 0x00) {
+		
+// 		// Makes sure decode does not overflow
+// 		msgConcat(in, &inPos, &encode, &bitLength);
+		
+// 		// Decode
+// 		while(bitLength) {
+// 			decode <<= 1;											// Shift left 1, if 0, stays 0
+// 			if(encode >> ((uint64_t)bitLength - 2) == 2 &&			// If 10 then 0
+// 			   encode >> ((uint64_t)bitLength - 4) != 8 &&			// But not 1000
+// 			   encode >> ((uint64_t)bitLength - 4) != 0	) {			// Or 0000...
+// 				//printf("0\n");
+// 				encode &= ~(1 << ((uint64_t)bitLength - 1));		// Turns off left bit
+// 				bitLength -= 2;										// Update bitLength
+// 			} else if(encode >> ((uint64_t)bitLength - 4) == 8) {	// if 1000 then 1
+// 				//printf("1\n");
+// 				encode &= ~(1 << ((uint64_t)bitLength - 1));		// Turns off left bit
+// 				decode |= 1;										// Adds a 1 to decode
+// 				bitLength -= 4;										// Update bitLength
+// 			} else {												// Trailing 0's
+// 				bitLength -= 2;										// Update bitLength
+// 			}
+// 			msgConcat(in, &inPos, &encode, &bitLength);				// Top off the stack
+// 		}	
+		
+// 		// Strip 0 bits from the right
+// 		while(~decode & 1) {
+// 			decode >>= 1;
+// 		}	
+		
+// 		// Strip Tail
+// 		if(decode & 1) {
+// 			decode >>= 1;
+// 		} else {
+// 			return -1; // Fail Tail
+// 		}	
+
+// 		// Check Preamble
+// 		if(decode >> 24 == 0x5d) {
+// 			decode &= ~((uint64_t)0x5d << 24);			// Turn off Preamble
+			
+// 			// Get PIN
+// 			int i;
+// 			int temp;
+// 			for(i = 0; i < 8; i++) {
+// 				temp = ((decode >> 16) & (1 << i));
+// 				if(temp) {
+// 					pin |= (1 << (7 - i));
+// 				}
+// 			}
+// 			decode &= ~((decode >> 16) << 16);			// Turn off PIN
+// 			out[0] = pin;
+			
+// 			// Get Command
+// 			// Check to see if inverse matches command
+// 			if((decode >> 8) == ((decode & ~((decode >> 8) << 8)) ^ 0xff)) {
+// 				decode >>= 8;
+// 				out[1] = decode;
+// 			} else {
+// 				return -1; // Failed Command
+// 			}
+// 		} else {
+// 			return -1; // Failed Preamble
+// 		}
+// 	} else {
+// 		return -1; // Failed Sync
+// 	}	
 
 void jukebox_packetrx(uint32_t *packet, int len) {
 	printf("Not yet supported.\n");
